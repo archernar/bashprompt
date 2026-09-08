@@ -77,7 +77,6 @@ __parse_git_status() {
         fi
     else
         S1="staged (+), unstaged (*), untracked (?)"
-        GIT_PROMPT_EXTRA+="\n\[\033[90m\]├───$S1\[\033[0m\]"
         GIT_PROMPT_EXTRA+="\n\[\033[90m\]├───[Indicators:        ]─\[\033[0m\]${S1}"
         GIT_PROMPT_EXTRA+="\n\[\033[90m\]├───[Ahead  origin:     ]─\[\033[0m\]${E1}"
         GIT_PROMPT_EXTRA+="\n\[\033[90m\]├───[Behind origin:     ]─\[\033[0m\]${E2}"
