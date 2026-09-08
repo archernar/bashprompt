@@ -1,174 +1,175 @@
-__git_changed() {
-    local BRIGHT_BLACK="\033[90m"                  # Often used as Gray / Dim Black
-    local RESET="\033[0m"
-    local N 
-    local sz
-    if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-        N=$(git diff --name-only HEAD | wc -l)
-        if [ "$N" -gt 0 ]; then
-            sz="$(git diff --name-only HEAD | paste -sd ' ')"
-            echo -e "\n${BRIGHT_BLACK}├───[C]─${RESET}$sz"
+__parse_git_status() {
+    # Verify inside git directory
+    local git_dir
+    git_dir="$(git rev-parse --git-dir 2>/dev/null)" || return 1
+
+    local branch="" upstream="" ahead=0 behind=0
+    local staged=0 unstaged=0 untracked=0
+    local changed_files=() untracked_files=()
+
+    # Fast single-pass status check
+    while IFS= read -r line; do
+        case "$line" in
+            "# branch.head "*) branch="${line### branch.head }" ;;
+            "# branch.ab "*) 
+                local ab="${line### branch.ab }"
+                ahead="${ab% -*}"; ahead="${ahead#*+}"; behind="${ab#*-}" ;;
+            \?*) 
+                ((untracked++))
+                ((${#untracked_files[@]} < 4)) && untracked_files+=("${line#\? }") ;;
+            1\ [^.]*|2\ [^.]*) 
+                ((staged++)) ;;
+            1\ .[^.]*|2\ .[^.]*) 
+                ((unstaged++))
+                ((${#changed_files[@]} < 4)) && changed_files+=("${line##* }") ;;
+        esac
+    done < <(git status --ignored=no --porcelain=v2 --branch 2>/dev/null)
+
+    # Detached HEAD check
+    [[ "$branch" == "(detached)" ]] && branch="Detached HEAD"
+
+    # Action detection (rebase, merge, cherry-pick)
+    local state=""
+    if [[ -d "$git_dir/rebase-merge" || -d "$git_dir/rebase-apply" ]]; then
+        state="|REBASE"
+    elif [[ -f "$git_dir/MERGE_HEAD" ]]; then
+        state="|MERGE"
+    elif [[ -f "$git_dir/CHERRY_PICK_HEAD" ]]; then
+        state="|CHERRY-PICK"
+    fi
+
+    # Output branch + divergence
+    local branch_col="\[\033[32m\]"
+    (( ahead > 0 || behind > 0 )) && branch_col="\[\033[31m\]"
+
+    GIT_PROMPT_INFO="${branch_col}(${branch}${state}"
+    E1="NO FILES"
+    E2="NO FILES"
+    (( ahead > 0 )) && GIT_PROMPT_INFO+=" ↑${ahead}"
+    (( behind > 0 )) && GIT_PROMPT_INFO+=" ↓${behind}"
+    GIT_PROMPT_INFO+=")\[\033[0m\]"
+
+    (( ahead > 0 )) && E1+= " AHEAD OF BY  :  ↑${ahead}"
+    (( behind > 0 )) && E2+=" BEHIND OF BY :  ↓${behind}"
+    E1+="\[\033[0m\]"
+    E2+="\[\033[0m\]"
+
+    # Summary indicators: staged (+), unstaged (*), untracked (?)
+    local counts=""
+    (( staged > 0 )) && counts+="\[\033[32m\]+${staged}\[\033[0m\]"
+    (( unstaged > 0 )) && counts+="\[\033[31m\]*${unstaged}\[\033[0m\]"
+    (( untracked > 0 )) && counts+="\[\033[33m\]?${untracked}\[\033[0m\]"
+    [[ -n "$counts" ]] && GIT_PROMPT_INFO+=" [${counts}]"
+
+    # File lists with truncation
+    GIT_PROMPT_EXTRA=""
+    if [[ $GIT_DETAIL -eq 0 ]]; then
+        if [[ $GIT_CHANGED -eq 1 && unstaged -gt 0 ]]; then
+            local flist="${changed_files[*]}"
+            (( unstaged > 3 )) && flist+=" ... +$((unstaged - 3)) more"
+            GIT_PROMPT_EXTRA+="\n\[\033[90m\]├───[C]─\[\033[0m\]${flist}"
+        fi
+
+        if [[ $GIT_UNTRACKED -eq 1 && untracked -gt 0 ]]; then
+            local ulist="${untracked_files[*]}"
+            (( untracked > 3 )) && ulist+=" ... +$((untracked - 3)) more"
+            GIT_PROMPT_EXTRA+="\n\[\033[90m\]├───[U]─\[\033[0m\]${ulist}"
+        fi
+    else
+        S1="Indicators: staged (+), unstaged (*), untracked (?)"
+        GIT_PROMPT_EXTRA+="\n\[\033[90m\]├───$S1\[\033[0m\]"
+        GIT_PROMPT_EXTRA+="\n\[\033[90m\]├───[                   ]─\[\033[0m\]${S1}"
+        GIT_PROMPT_EXTRA+="\n\[\033[90m\]├───[Ahead  origin:     ]─\[\033[0m\]${E1}"
+        GIT_PROMPT_EXTRA+="\n\[\033[90m\]├───[Behind origin:     ]─\[\033[0m\]${E2}"
+
+        if [[ $GIT_CHANGED -eq 1 && unstaged -gt 0 ]]; then
+            local flist="${changed_files[*]}"
+            (( unstaged > 3 )) && flist+=" ... +$((unstaged - 3)) more"
+            GIT_PROMPT_EXTRA+="\n\[\033[90m\]├───[CHANGED FILES: ]─\[\033[0m\]${flist}"
+        fi
+
+        if [[ $GIT_UNTRACKED -eq 1 && untracked -gt 0 ]]; then
+            local ulist="${untracked_files[*]}"
+            (( untracked > 3 )) && ulist+=" ... +$((untracked - 3)) more"
+            GIT_PROMPT_EXTRA+="\n\[\033[90m\]├───[Untracked:         ]─\[\033[0m\]${ulist}"
         fi
     fi
-}
-__git_untracked() {
-    local BRIGHT_BLACK="\033[90m"                  # Often used as Gray / Dim Black
-    local RESET="\033[0m"
-    local N 
-    local sz
-    if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-        N=$(git ls-files --others --exclude-standard --exclude=.* | wc -l)
-        if [ "$N" -gt 0 ]; then
-            sz="$(git ls-files --others --exclude-standard --exclude=.* | paste -sd ' ')"
-            echo -e "\n${BRIGHT_BLACK}├───[U]─${RESET}$sz"
-        fi
-    fi
-}
-__git_currentbranch() {
-    local sz="NGR"
-    if git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
-        # Get the current branch name
-        sz=$(git rev-parse --abbrev-ref HEAD)
-        # Handle detached HEAD state
-        if [ "$sz" == "HEAD" ]; then
-            sz="Detached HEAD state."
-        fi
-    fi
-    echo -e "$sz"
+
+    return 0
 }
 
-set_prompt() {
-    #┌───
-    #├───────
-    #└──╼
-    local DOLLA="\$"
+
+
+__build_prompt() {
+    local exit_code=$? # Must be the very first line
+    
     local RESET="\[\033[0m\]"
-    local BLACK="\[\033[30m\]"
-    local BRIGHT_BLACK="\[\033[90m\]"              # Often used as Gray / Dim Black
+    local BRIGHT_BLACK="\[\033[90m\]"
     local RED="\[\033[31m\]"
     local GREEN="\[\033[32m\]"
     local YELLOW="\[\033[33m\]"
-    local BLUE="\[\033[34m\]"
-    local MAGENTA="\[\033[35m\]"
-    local CYAN="\[\033[36m\]"
     local WHITE="\[\033[37m\]"
     local BOLD="\[\033[1m\]"
-
-    if [[ $GIT_ONELINE -eq 0 ]]; then
-        PS1="${BRIGHT_BLACK}┌───[${RESET}"
-    else
-        PS1="${BRIGHT_BLACK}[${RESET}"
-    fi
-    PS1+="$(__exit_status)"
-    PS1+="${BRIGHT_BLACK}]─[${BOLD}${WHITE}\u@\h${BRIGHT_BLACK}]─[${YELLOW}\w${BRIGHT_BLACK}]"
-    PS1+="(\$(__git_currentbranch))"
-    PS1+="\$(__git_prompt)"
-    
-    # Listing untracked and changed files
-    if [[ $GIT_UNTRACKED -eq 1 ]]; then
-        PS1+="\$(__git_untracked)"
-    fi
-    if [[ $GIT_CHANGED -eq 1 ]]; then
-        PS1+="\$(__git_changed)"
-    fi
-    
-    if [[ $GIT_ONELINE -eq 0 ]]; then
-        PS1+="\n${BRIGHT_BLACK}└──╼ ${BOLD}${WHITE}${DOLLA}${RESET} "
-    else
-        PS1+=" ${DOLLA}${RESET} "
-    fi
-
-}
-
-# Dynamic status icon (Green check on success, Red cross on failure)
-__exit_status() {
-    local exit_code=$?
-    if [[ $exit_code -eq 0 ]]; then
-        printf "%s✓%s" "$GREEN" "$RESET"
-    else
-        printf "%s✗ [%s]%s" "$RED" "$exit_code" "$RESET"
-    fi
-}
-
-# Git branch parser for prompt
-__git_prompt() {
     local DOLLA="\$"
-    local GTGT=">>"
-    local SPC=" "
-    local RESET="\033[0m"
-    local BLACK="\033[30m"
-    local BRIGHT_BLACK="\033[90m"                  # Often used as Gray / Dim Black
-    local GREEN="\033[32m"
-    local WHITE="\033[37m"
-    local RED="\033[31m"
-    local BOLD="\033[1m"
-    if git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
-        local current_branch=$(git rev-parse --abbrev-ref HEAD)
-        if ! git rev-parse --verify "origin/$current_branch" > /dev/null 2>&1; then
-            echo -e "$WHITE>> $RESET"
-            return 1
-        fi
 
-        local ahead_count=$(git rev-list --count "origin/$current_branch..$current_branch")
-        local behind_count=$(git rev-list --count "$current_branch..origin/$current_branch")
-
-        # Count all changes staged and unstaged
-        local allchanges_count=$(git diff --name-only HEAD | wc -l)
-        N=$allchanges_count
-        if [ "$allchanges_count" -eq 0 ]; then
-            CHANGES="$GREEN$N>"
-        else
-            CHANGES="$RED$N>"
-        fi
-
-        local total=$(( ahead_count + behind_count ))
-
-        if [ "$ahead_count" -eq 0 ] && [ "$behind_count" -eq 0 ]; then
-            echo -e "$GREEN>>$CHANGES$RESET"
-        else
-            echo -e "$RED>>$CHANGES$RESET"
-        fi
+    # Exit icon
+    local status_icon
+    if [[ $exit_code -eq 0 ]]; then
+        status_icon="${GREEN}✓${RESET}"
     else
-        echo -e "$WHITE>>$CHANGES$RESET"
+        status_icon="${RED}✗ [${exit_code}]${RESET}"
+    fi
+
+    GIT_PROMPT_INFO=""
+    GIT_PROMPT_EXTRA=""
+    __parse_git_status
+
+    if [[ $GIT_ONELINE -eq 1 ]]; then
+        PS1="${BRIGHT_BLACK}[${RESET}${status_icon}${BRIGHT_BLACK}]─[${BOLD}${WHITE}\u@\h${BRIGHT_BLACK}]─[${YELLOW}\w${BRIGHT_BLACK}]"
+        [[ -n "$GIT_PROMPT_INFO" ]] && PS1+="─${GIT_PROMPT_INFO}"
+        PS1+="${RESET} ${DOLLA} "
+    else
+        PS1="${BRIGHT_BLACK}┌───[${RESET}${status_icon}${BRIGHT_BLACK}]─[${BOLD}${WHITE}\u@\h${BRIGHT_BLACK}]─[${YELLOW}\w${BRIGHT_BLACK}]"
+        [[ -n "$GIT_PROMPT_INFO" ]] && PS1+="─${GIT_PROMPT_INFO}"
+        [[ -n "$GIT_PROMPT_EXTRA" ]] && PS1+="${GIT_PROMPT_EXTRA}"
+        PS1+="\n${BRIGHT_BLACK}└──╼ ${BOLD}${WHITE}${DOLLA}${RESET} "
     fi
 }
+
 bashprompt() {
+    GIT_DETAIL=0
     GIT_ONELINE=0
     GIT_CHANGED=0
     GIT_UNTRACKED=0
+    PROMPT_COMMAND="__build_prompt"
+
     case "$1" in
         git)
             GIT_CHANGED=1
             GIT_UNTRACKED=1
-            set_prompt;
             ;;
         gitsimple)
             GIT_ONELINE=1
-            GIT_CHANGED=0
-            GIT_UNTRACKED=0
-            set_prompt;
             ;;
-        simple)
-            PS1="\$ "
-            ;;
-        minimal)
-            PS1="\$ "
+        detail)
+            GIT_CHANGED=1
+            GIT_UNTRACKED=1
+            GIT_DETAIL=1
             ;;
         compact)
+            PROMPT_COMMAND=""
             PS1="\[\e[1;36m\]\W\[\e[0m\] \$ "
             ;;
         full)
+            PROMPT_COMMAND=""
             PS1="\[\e[32m\]\u@\h\[\e[0m\]:\[\e[34m\]\w\[\e[0m\]\$ "
             ;;
-        *)
+        simple|minimal|*)
+            PROMPT_COMMAND=""
             PS1="\$ "
-            echo "Usage: bashprompt {git|gitsimple|simple|minimal|compact|full}"
             ;;
     esac
 }
 
+# Default initialization
 bashprompt simple
-
-#PROMPT_COMMAND="set_prompt; $PROMPT_COMMAND"
-
-
