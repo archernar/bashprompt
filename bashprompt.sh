@@ -76,16 +76,16 @@ __parse_git_status() {
             GIT_PROMPT_EXTRA+="\n\[\033[90m\]├───[U]─\[\033[0m\]${ulist}"
         fi
     else
-        S1="Indicators: staged (+), unstaged (*), untracked (?)"
+        S1="staged (+), unstaged (*), untracked (?)"
         GIT_PROMPT_EXTRA+="\n\[\033[90m\]├───$S1\[\033[0m\]"
-        GIT_PROMPT_EXTRA+="\n\[\033[90m\]├───[                   ]─\[\033[0m\]${S1}"
+        GIT_PROMPT_EXTRA+="\n\[\033[90m\]├───[Indicators:        ]─\[\033[0m\]${S1}"
         GIT_PROMPT_EXTRA+="\n\[\033[90m\]├───[Ahead  origin:     ]─\[\033[0m\]${E1}"
         GIT_PROMPT_EXTRA+="\n\[\033[90m\]├───[Behind origin:     ]─\[\033[0m\]${E2}"
 
         if [[ $GIT_CHANGED -eq 1 && unstaged -gt 0 ]]; then
             local flist="${changed_files[*]}"
             (( unstaged > 3 )) && flist+=" ... +$((unstaged - 3)) more"
-            GIT_PROMPT_EXTRA+="\n\[\033[90m\]├───[CHANGED FILES: ]─\[\033[0m\]${flist}"
+            GIT_PROMPT_EXTRA+="\n\[\033[90m\]├───[Changed Files:     ]─\[\033[0m\]${flist}"
         fi
 
         if [[ $GIT_UNTRACKED -eq 1 && untracked -gt 0 ]]; then
