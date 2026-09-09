@@ -82,6 +82,10 @@ __parse_git_status() {
             GIT_PROMPT_EXTRA+="\n$BRIGHT_BLACK├───[U]─$RESET${ulist}"
         fi
     else
+        if [[ $GIT_RAW -gt 0 ]]; then
+            git status --ignored=no --porcelain=v2 --branch  
+        fi
+
         S1="staged (+), unstaged (*), untracked (?)"
         GIT_PROMPT_EXTRA+="\n$BRIGHT_BLACK├───[Indicators:        ]─$RESET${S1}"
         GIT_PROMPT_EXTRA+="\n$BRIGHT_BLACK├───[Ahead  origin:     ]─$RESET${E1}"
@@ -142,6 +146,7 @@ __build_prompt() {
 }
 
 bashprompt() {
+    GIT_RAW=0
     GIT_DETAIL=0
     GIT_ONELINE=0
     GIT_CHANGED=0
@@ -157,6 +162,12 @@ bashprompt() {
             GIT_ONELINE=1
             ;;
         detail)
+            GIT_CHANGED=1
+            GIT_UNTRACKED=1
+            GIT_DETAIL=1
+            ;;
+        raw)
+            GIT_RAW=1
             GIT_CHANGED=1
             GIT_UNTRACKED=1
             GIT_DETAIL=1
