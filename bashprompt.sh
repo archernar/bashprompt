@@ -5,8 +5,13 @@ __parse_git_status() {
 
     local branch="" upstream="" ahead=0 behind=0
     local staged=0 unstaged=0 untracked=0
-    local  fileshowcount=10
+    local fileshowcount=10
     local changed_files=() untracked_files=()
+    local RESET="\[\033[0m\]"
+    local BRIGHT_BLACK="\[\033[90m\]"
+    local RED="\[\033[31m\]"
+    local GREEN="\[\033[32m\]"
+    local YELLOW="\[\033[33m\]"
 
     # Fast single-pass status check
     while IFS= read -r line; do
@@ -40,26 +45,26 @@ __parse_git_status() {
     fi
 
     # Output branch + divergence
-    local branch_col="\[\033[32m\]"
-    (( ahead > 0 || behind > 0 )) && branch_col="\[\033[31m\]"
+    local branch_col="$GREEN"
+    (( ahead > 0 || behind > 0 )) && branch_col="$RED"
 
     GIT_PROMPT_INFO="${branch_col}(${branch}${state}"
     E1=""
     E2=""
     (( ahead > 0 )) && GIT_PROMPT_INFO+=" ↑${ahead}"
     (( behind > 0 )) && GIT_PROMPT_INFO+=" ↓${behind}"
-    GIT_PROMPT_INFO+=")\[\033[0m\]"
+    GIT_PROMPT_INFO+=")$RESET"
 
     (( ahead > 0 )) && E1+="↑${ahead}"
     (( behind > 0 )) && E2+="↓${behind}"
-    E1+="\[\033[0m\]"
-    E2+="\[\033[0m\]"
+    E1+="$RESET"
+    E2+="$RESET"
 
     # Summary indicators: staged (+), unstaged (*), untracked (?)
     local counts=""
-    (( staged > 0 )) && counts+="\[\033[32m\]+${staged}\[\033[0m\]"
-    (( unstaged > 0 )) && counts+="\[\033[31m\]*${unstaged}\[\033[0m\]"
-    (( untracked > 0 )) && counts+="\[\033[33m\]?${untracked}\[\033[0m\]"
+    (( unstaged > 0 )) && counts+="$RED*${unstaged}$RESET"
+    (( staged > 0 )) && counts+="$GREEN+${staged}$RESET"
+    (( untracked > 0 )) && counts+="$YELLOW?${untracked}$RESET"
     [[ -n "$counts" ]] && GIT_PROMPT_INFO+=" [${counts}]"
 
     # File lists with truncation
@@ -68,30 +73,30 @@ __parse_git_status() {
         if [[ $GIT_CHANGED -eq 1 && unstaged -gt 0 ]]; then
             local flist="${changed_files[*]}"
             (( unstaged > fileshowcount )) && flist+=" ... +$((unstaged - fileshowcount)) more"
-            GIT_PROMPT_EXTRA+="\n\[\033[90m\]├───[C]─\[\033[0m\]${flist}"
+            GIT_PROMPT_EXTRA+="\n$BRIGHT_BLACK├───[C]─$RESET${flist}"
         fi
 
         if [[ $GIT_UNTRACKED -eq 1 && untracked -gt 0 ]]; then
             local ulist="${untracked_files[*]}"
             (( untracked > fileshowcount )) && ulist+=" ... +$((untracked - fileshowcount)) more"
-            GIT_PROMPT_EXTRA+="\n\[\033[90m\]├───[U]─\[\033[0m\]${ulist}"
+            GIT_PROMPT_EXTRA+="\n$BRIGHT_BLACK├───[U]─$RESET${ulist}"
         fi
     else
         S1="staged (+), unstaged (*), untracked (?)"
-        GIT_PROMPT_EXTRA+="\n\[\033[90m\]├───[Indicators:        ]─\[\033[0m\]${S1}"
-        GIT_PROMPT_EXTRA+="\n\[\033[90m\]├───[Ahead  origin:     ]─\[\033[0m\]${E1}"
-        GIT_PROMPT_EXTRA+="\n\[\033[90m\]├───[Behind origin:     ]─\[\033[0m\]${E2}"
+        GIT_PROMPT_EXTRA+="\n$BRIGHT_BLACK├───[Indicators:        ]─$RESET${S1}"
+        GIT_PROMPT_EXTRA+="\n$BRIGHT_BLACK├───[Ahead  origin:     ]─$RESET${E1}"
+        GIT_PROMPT_EXTRA+="\n$BRIGHT_BLACK├───[Behind origin:     ]─$RESET${E2}"
 
         if [[ $GIT_CHANGED -eq 1 && unstaged -gt 0 ]]; then
             local flist="${changed_files[*]}"
             (( unstaged > fileshowcount )) && flist+=" ... +$((unstaged - fileshowcount)) more"
-            GIT_PROMPT_EXTRA+="\n\[\033[90m\]├───[* Changed Files:   ]─\[\033[0m\]${flist}"
+            GIT_PROMPT_EXTRA+="\n$BRIGHT_BLACK├───[* Changed Files:   ]─$RESET${flist}"
         fi
 
         if [[ $GIT_UNTRACKED -eq 1 && untracked -gt 0 ]]; then
             local ulist="${untracked_files[*]}"
             (( untracked > fileshowcount )) && ulist+=" ... +$((untracked - fileshowcount)) more"
-            GIT_PROMPT_EXTRA+="\n\[\033[90m\]├───[? Untracked:       ]─\[\033[0m\]${ulist}"
+            GIT_PROMPT_EXTRA+="\n$BRIGHT_BLACK├───[? Untracked:       ]─$RESET${ulist}"
         fi
     fi
 
