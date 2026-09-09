@@ -5,6 +5,7 @@ __parse_git_status() {
 
     local branch="" upstream="" ahead=0 behind=0
     local staged=0 unstaged=0 untracked=0
+    local  fileshowcount=10
     local changed_files=() untracked_files=()
 
     # Fast single-pass status check
@@ -16,12 +17,12 @@ __parse_git_status() {
                 ahead="${ab% -*}"; ahead="${ahead#*+}"; behind="${ab#*-}" ;;
             \?*) 
                 ((untracked++))
-                ((${#untracked_files[@]} < 4)) && untracked_files+=("${line#\? }") ;;
+                ((${#untracked_files[@]} < fileshowcount)) && untracked_files+=("${line#\? }") ;;
             1\ [^.]*|2\ [^.]*) 
                 ((staged++)) ;;
             1\ .[^.]*|2\ .[^.]*) 
                 ((unstaged++))
-                ((${#changed_files[@]} < 4)) && changed_files+=("${line##* }") ;;
+                ((${#changed_files[@]} < fileshowcount)) && changed_files+=("${line##* }") ;;
         esac
     done < <(git status --ignored=no --porcelain=v2 --branch 2>/dev/null)
 
@@ -66,13 +67,13 @@ __parse_git_status() {
     if [[ $GIT_DETAIL -eq 0 ]]; then
         if [[ $GIT_CHANGED -eq 1 && unstaged -gt 0 ]]; then
             local flist="${changed_files[*]}"
-            (( unstaged > 3 )) && flist+=" ... +$((unstaged - 3)) more"
+            (( unstaged > fileshowcount )) && flist+=" ... +$((unstaged - fileshowcount)) more"
             GIT_PROMPT_EXTRA+="\n\[\033[90m\]├───[C]─\[\033[0m\]${flist}"
         fi
 
         if [[ $GIT_UNTRACKED -eq 1 && untracked -gt 0 ]]; then
             local ulist="${untracked_files[*]}"
-            (( untracked > 3 )) && ulist+=" ... +$((untracked - 3)) more"
+            (( untracked > fileshowcount )) && ulist+=" ... +$((untracked - fileshowcount)) more"
             GIT_PROMPT_EXTRA+="\n\[\033[90m\]├───[U]─\[\033[0m\]${ulist}"
         fi
     else
@@ -83,14 +84,14 @@ __parse_git_status() {
 
         if [[ $GIT_CHANGED -eq 1 && unstaged -gt 0 ]]; then
             local flist="${changed_files[*]}"
-            (( unstaged > 3 )) && flist+=" ... +$((unstaged - 3)) more"
-            GIT_PROMPT_EXTRA+="\n\[\033[90m\]├───[Changed Files:     ]─\[\033[0m\]${flist}"
+            (( unstaged > fileshowcount )) && flist+=" ... +$((unstaged - fileshowcount)) more"
+            GIT_PROMPT_EXTRA+="\n\[\033[90m\]├───[* Changed Files:   ]─\[\033[0m\]${flist}"
         fi
 
         if [[ $GIT_UNTRACKED -eq 1 && untracked -gt 0 ]]; then
             local ulist="${untracked_files[*]}"
-            (( untracked > 3 )) && ulist+=" ... +$((untracked - 3)) more"
-            GIT_PROMPT_EXTRA+="\n\[\033[90m\]├───[Untracked:         ]─\[\033[0m\]${ulist}"
+            (( untracked > fileshowcount )) && ulist+=" ... +$((untracked - fileshowcount)) more"
+            GIT_PROMPT_EXTRA+="\n\[\033[90m\]├───[? Untracked:       ]─\[\033[0m\]${ulist}"
         fi
     fi
 
