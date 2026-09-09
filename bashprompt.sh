@@ -50,8 +50,8 @@ __parse_git_status() {
     (( behind > 0 )) && GIT_PROMPT_INFO+=" ↓${behind}"
     GIT_PROMPT_INFO+=")\[\033[0m\]"
 
-    (( ahead > 0 )) && E1+="AHEAD  ↑${ahead}"
-    (( behind > 0 )) && E2+="BEHIND ↓${behind}"
+    (( ahead > 0 )) && E1+="↑${ahead}"
+    (( behind > 0 )) && E2+="↓${behind}"
     E1+="\[\033[0m\]"
     E2+="\[\033[0m\]"
 
