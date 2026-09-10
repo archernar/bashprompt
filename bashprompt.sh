@@ -6,12 +6,16 @@ __parse_git_status() {
     local branch="" upstream="" ahead=0 behind=0
     local staged=0 unstaged=0 untracked=0
     local fileshowcount=10
-    local changed_files=() untracked_files=()
+    local changed_files=() untracked_files=() staged_files=()
     local RESET="\[\033[0m\]"
     local BRIGHT_BLACK="\[\033[90m\]"
+    local BBLACK="\[\033[90m\]"
     local RED="\[\033[31m\]"
     local GREEN="\[\033[32m\]"
     local YELLOW="\[\033[33m\]"
+    local REDSTAR="$RED*$RESET"
+    local GREENPLUS="$GREEN+$RESET"
+    local YELLOWQUESTION="$YELLOW?$RESET"
 
     # Fast single-pass status check
     while IFS= read -r line; do
@@ -30,6 +34,10 @@ __parse_git_status() {
                 ((${#changed_files[@]} < fileshowcount)) && changed_files+=("${line##* }") ;;
         esac
     done < <(git status --ignored=no --porcelain=v2 --branch 2>/dev/null)
+
+    while IFS= read -r line; do
+        ((${#staged_files[@]} < fileshowcount)) && staged_files+=("${line##* }")
+    done < <(git diff --name-only HEAD 2>/dev/null)
 
     # Detached HEAD check
     [[ "$branch" == "(detached)" ]] && branch="Detached HEAD"
@@ -94,13 +102,17 @@ __parse_git_status() {
         if [[ $GIT_CHANGED -eq 1 && unstaged -gt 0 ]]; then
             local flist="${changed_files[*]}"
             (( unstaged > fileshowcount )) && flist+=" ... +$((unstaged - fileshowcount)) more"
-            GIT_PROMPT_EXTRA+="\n$BRIGHT_BLACK├───[* Changed Files:   ]─$RESET${flist}"
+            GIT_PROMPT_EXTRA+="\n$BBLACK├───[$REDSTAR$BBLACK Changed Files:   ]─$RESET${flist}"
         fi
-
+        if [[ $GIT_STAGED -eq 1 && staged -gt 0 ]]; then
+            local flist="${staged_files[*]}"
+            (( staged > fileshowcount )) && flist+=" ... +$((staged - fileshowcount)) more"
+            GIT_PROMPT_EXTRA+="\n$BBLACK├───[$GREENPLUS$BBLACK Staged Files:    ]─$RESET${flist}"
+        fi
         if [[ $GIT_UNTRACKED -eq 1 && untracked -gt 0 ]]; then
             local ulist="${untracked_files[*]}"
             (( untracked > fileshowcount )) && ulist+=" ... +$((untracked - fileshowcount)) more"
-            GIT_PROMPT_EXTRA+="\n$BRIGHT_BLACK├───[? Untracked:       ]─$RESET${ulist}"
+            GIT_PROMPT_EXTRA+="\n$BBLACK├───[$YELLOWQUESTION$BBLACK Untracked:       ]─$RESET${ulist}"
         fi
     fi
 
@@ -147,6 +159,7 @@ __build_prompt() {
 
 bashprompt() {
     GIT_RAW=0
+    GIT_STAGED=0
     GIT_DETAIL=0
     GIT_ONELINE=0
     GIT_CHANGED=0
@@ -162,6 +175,7 @@ bashprompt() {
             GIT_ONELINE=1
             ;;
         detail)
+            GIT_STAGED=1
             GIT_CHANGED=1
             GIT_UNTRACKED=1
             GIT_DETAIL=1
