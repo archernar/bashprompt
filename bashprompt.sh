@@ -96,7 +96,7 @@ __parse_git_status() {
 
         S1="staged (+), unstaged (*), untracked (?)"
         GIT_PROMPT_EXTRA+="\n$BRIGHT_BLACK├───[Indicators:        ]─$RESET${S1}"
-        GIT_PROMPT_EXTRA+="\n$BRIGHT_BLACK├───[Origin:            ]─$RESET$(git remote get-url origin)"
+        GIT_PROMPT_EXTRA+="\n$BRIGHT_BLACK├───[Origin:            ]─$RESET$(git remote get-url origin 2>/dev/null)"
         GIT_PROMPT_EXTRA+="\n$BRIGHT_BLACK├───[Ahead  origin:     ]─$RESET${E1}"
         GIT_PROMPT_EXTRA+="\n$BRIGHT_BLACK├───[Behind origin:     ]─$RESET${E2}"
         if [[ $GIT_CHANGED -eq 1 && unstaged -gt 0 ]]; then
