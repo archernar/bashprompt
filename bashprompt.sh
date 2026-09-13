@@ -16,6 +16,14 @@ __parse_git_status() {
     local REDSTAR="$RED*$RESET"
     local GREENPLUS="$GREEN+$RESET"
     local YELLOWQUESTION="$YELLOW?$RESET"
+    local ARROWUP="↑"
+    local ARROWDOWN="↓"
+    local CHECK="✓"
+    local EX="✗"
+    local TEEBONE="├───"
+    local BBTEEBONE="$BBLACK├───"
+    local DOWNHOOK="┌───"
+    local   UPHOOK="└──╼"
 
     # Fast single-pass status check
     while IFS= read -r line; do
@@ -81,38 +89,38 @@ __parse_git_status() {
         if [[ $GIT_CHANGED -eq 1 && unstaged -gt 0 ]]; then
             local flist="${changed_files[*]}"
             (( unstaged > fileshowcount )) && flist+=" ... +$((unstaged - fileshowcount)) more"
-            GIT_PROMPT_EXTRA+="\n$BRIGHT_BLACK├───[C]─$RESET${flist}"
+            GIT_PROMPT_EXTRA+="\n$BBTEEBONE[C]─$RESET${flist}"
         fi
 
         if [[ $GIT_UNTRACKED -eq 1 && untracked -gt 0 ]]; then
             local ulist="${untracked_files[*]}"
             (( untracked > fileshowcount )) && ulist+=" ... +$((untracked - fileshowcount)) more"
-            GIT_PROMPT_EXTRA+="\n$BRIGHT_BLACK├───[U]─$RESET${ulist}"
+            GIT_PROMPT_EXTRA+="\n$BBTEEBONE[U]─$RESET${ulist}"
         fi
     else
         if [[ $GIT_RAW -gt 0 ]]; then
             git status --ignored=no --porcelain=v2 --branch  
         fi
 
-        S1="staged (+), unstaged (*), untracked (?)"
-        GIT_PROMPT_EXTRA+="\n$BRIGHT_BLACK├───[Indicators:        ]─$RESET${S1}"
-        GIT_PROMPT_EXTRA+="\n$BRIGHT_BLACK├───[Origin:            ]─$RESET$(git remote get-url origin 2>/dev/null)"
-        GIT_PROMPT_EXTRA+="\n$BRIGHT_BLACK├───[Ahead  origin:     ]─$RESET${E1}"
-        GIT_PROMPT_EXTRA+="\n$BRIGHT_BLACK├───[Behind origin:     ]─$RESET${E2}"
+        S1="staged ($GREENPLUS), unstaged ($REDSTAR), untracked ($YELLOWQUESTION)"
+        GIT_PROMPT_EXTRA+="\n$BBTEEBONE[Indicators:        ]─$RESET${S1}"
+        GIT_PROMPT_EXTRA+="\n$BBTEEBONE[Origin:            ]─$RESET$(git remote get-url origin 2>/dev/null)"
+        GIT_PROMPT_EXTRA+="\n$BBTEEBONE[Ahead  origin:     ]─$RESET${E1}"
+        GIT_PROMPT_EXTRA+="\n$BBTEEBONE[Behind origin:     ]─$RESET${E2}"
         if [[ $GIT_CHANGED -eq 1 && unstaged -gt 0 ]]; then
             local flist="${changed_files[*]}"
             (( unstaged > fileshowcount )) && flist+=" ... +$((unstaged - fileshowcount)) more"
-            GIT_PROMPT_EXTRA+="\n$BBLACK├───[$REDSTAR$BBLACK Changed Files:   ]─$RESET${flist}"
+            GIT_PROMPT_EXTRA+="\n$BBTEEBONE[$REDSTAR$BBLACK Changed Files:   ]─$RESET${flist}"
         fi
         if [[ $GIT_STAGED -eq 1 && staged -gt 0 ]]; then
             local flist="${staged_files[*]}"
             (( staged > fileshowcount )) && flist+=" ... +$((staged - fileshowcount)) more"
-            GIT_PROMPT_EXTRA+="\n$BBLACK├───[$GREENPLUS$BBLACK Staged Files:    ]─$RESET${flist}"
+            GIT_PROMPT_EXTRA+="\n$BBTEEBONE[$GREENPLUS$BBLACK Staged Files:    ]─$RESET${flist}"
         fi
         if [[ $GIT_UNTRACKED -eq 1 && untracked -gt 0 ]]; then
             local ulist="${untracked_files[*]}"
             (( untracked > fileshowcount )) && ulist+=" ... +$((untracked - fileshowcount)) more"
-            GIT_PROMPT_EXTRA+="\n$BBLACK├───[$YELLOWQUESTION$BBLACK Untracked:       ]─$RESET${ulist}"
+            GIT_PROMPT_EXTRA+="\n$BBTEEBONE[$YELLOWQUESTION$BBLACK Untracked:       ]─$RESET${ulist}"
         fi
     fi
 
