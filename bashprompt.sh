@@ -10,20 +10,15 @@ __parse_git_status() {
     local RESET="\[\033[0m\]"
     local BRIGHT_BLACK="\[\033[90m\]"
     local BBLACK="\[\033[90m\]"
-    local RED="\[\033[31m\]"
-    local GREEN="\[\033[32m\]"
-    local YELLOW="\[\033[33m\]"
-    local REDSTAR="$RED*$RESET"
-    local GREENPLUS="$GREEN+$RESET"
-    local YELLOWQUESTION="$YELLOW?$RESET"
+    local RED="\[\033[31m\]" GREEN="\[\033[32m\]" YELLOW="\[\033[33m\]"
+    local REDSTAR="$RED*$RESET" GREENPLUS="$GREEN+$RESET" YELLOWQUESTION="$YELLOW?$RESET"
     local ARROWUP="↑"
+    local REDARROWUP="$RED$ARROWUP"
     local ARROWDOWN="↓"
+    local REDARROWDOWN="$RED$ARROWDOWN"
     local CHECK="✓"
     local EX="✗"
-    local TEEBONE="├───"
-    local BBTEEBONE="$BBLACK├───"
-    local DOWNHOOK="┌───"
-    local   UPHOOK="└──╼"
+    local TBONE="├───" BBTBONE="$BBLACK├───" DOWNHOOK="┌───" BBDOWNHOOK="$BBBLACK┌───" UPHOOK="└──╼" BBUPHOOK="$BBLACK└──╼"
 
     # Fast single-pass status check
     while IFS= read -r line; do
@@ -65,11 +60,15 @@ __parse_git_status() {
     (( ahead > 0 || behind > 0 )) && branch_col="$RED"
 
     GIT_PROMPT_INFO="${branch_col}(${branch}${state}"
+    E0=""
     E1=""
     E2=""
     (( ahead > 0 )) && GIT_PROMPT_INFO+=" ↑${ahead}"
     (( behind > 0 )) && GIT_PROMPT_INFO+=" ↓${behind}"
     GIT_PROMPT_INFO+=")$RESET"
+
+    (( ahead > 0 )) && E0="$REDARROWUP${ahead}$RESET"
+    (( behind > 0 )) && E0="$REDARROWDOWN${behind}$RESET"
 
     (( ahead > 0 )) && E1+="↑${ahead}"
     (( behind > 0 )) && E2+="↓${behind}"
@@ -89,38 +88,39 @@ __parse_git_status() {
         if [[ $GIT_CHANGED -eq 1 && unstaged -gt 0 ]]; then
             local flist="${changed_files[*]}"
             (( unstaged > fileshowcount )) && flist+=" ... +$((unstaged - fileshowcount)) more"
-            GIT_PROMPT_EXTRA+="\n$BBTEEBONE[C]─$RESET${flist}"
+            GIT_PROMPT_EXTRA+="\n$BBTBONE[C]─$RESET${flist}"
         fi
 
         if [[ $GIT_UNTRACKED -eq 1 && untracked -gt 0 ]]; then
             local ulist="${untracked_files[*]}"
             (( untracked > fileshowcount )) && ulist+=" ... +$((untracked - fileshowcount)) more"
-            GIT_PROMPT_EXTRA+="\n$BBTEEBONE[U]─$RESET${ulist}"
+            GIT_PROMPT_EXTRA+="\n$BBTBONE[U]─$RESET${ulist}"
         fi
     else
         if [[ $GIT_RAW -gt 0 ]]; then
             git status --ignored=no --porcelain=v2 --branch  
         fi
 
-        S1="staged ($GREENPLUS), unstaged ($REDSTAR), untracked ($YELLOWQUESTION)"
-        GIT_PROMPT_EXTRA+="\n$BBTEEBONE[Indicators:        ]─$RESET${S1}"
-        GIT_PROMPT_EXTRA+="\n$BBTEEBONE[Origin:            ]─$RESET$(git remote get-url origin 2>/dev/null)"
-        GIT_PROMPT_EXTRA+="\n$BBTEEBONE[Ahead  origin:     ]─$RESET${E1}"
-        GIT_PROMPT_EXTRA+="\n$BBTEEBONE[Behind origin:     ]─$RESET${E2}"
+        S1="staged ($GREENPLUS), unstaged ($REDSTAR), untracked ($YELLOWQUESTION), ahead ($ARROWUP), behind ($ARROWDOWN)"
+        GIT_PROMPT_EXTRA+="\n$BBTBONE[Indicators:        ]─$RESET${S1}"
+        GIT_PROMPT_EXTRA+="\n$BBTBONE[Origin:            ]─$RESET$(git remote get-url origin 2>/dev/null)"
+        GIT_PROMPT_EXTRA+="\n$BBTBONE[$branch wrt origin: ]─$RESET${E0}"
+        # GIT_PROMPT_EXTRA+="\n$BBTBONE[Ahead  origin:     ]─$RESET${E1}"
+        # GIT_PROMPT_EXTRA+="\n$BBTBONE[Behind origin:     ]─$RESET${E2}"
         if [[ $GIT_CHANGED -eq 1 && unstaged -gt 0 ]]; then
             local flist="${changed_files[*]}"
             (( unstaged > fileshowcount )) && flist+=" ... +$((unstaged - fileshowcount)) more"
-            GIT_PROMPT_EXTRA+="\n$BBTEEBONE[$REDSTAR$BBLACK Changed Files:   ]─$RESET${flist}"
+            GIT_PROMPT_EXTRA+="\n$BBTBONE[$REDSTAR$BBLACK Changed Files:   ]─$RESET${flist}"
         fi
         if [[ $GIT_STAGED -eq 1 && staged -gt 0 ]]; then
             local flist="${staged_files[*]}"
             (( staged > fileshowcount )) && flist+=" ... +$((staged - fileshowcount)) more"
-            GIT_PROMPT_EXTRA+="\n$BBTEEBONE[$GREENPLUS$BBLACK Staged Files:    ]─$RESET${flist}"
+            GIT_PROMPT_EXTRA+="\n$BBTBONE[$GREENPLUS$BBLACK Staged Files:    ]─$RESET${flist}"
         fi
         if [[ $GIT_UNTRACKED -eq 1 && untracked -gt 0 ]]; then
             local ulist="${untracked_files[*]}"
             (( untracked > fileshowcount )) && ulist+=" ... +$((untracked - fileshowcount)) more"
-            GIT_PROMPT_EXTRA+="\n$BBTEEBONE[$YELLOWQUESTION$BBLACK Untracked:       ]─$RESET${ulist}"
+            GIT_PROMPT_EXTRA+="\n$BBTBONE[$YELLOWQUESTION$BBLACK Untracked:       ]─$RESET${ulist}"
         fi
     fi
 
@@ -208,6 +208,34 @@ bashprompt() {
             ;;
     esac
 }
+
+
+
+# Array of commands to cycle through
+CYCLE_COMMANDS=(
+  "bashprompt detail"
+  "bashprompt git"
+  "bashprompt simple"
+  "bashprompt raw"
+)
+CYCLE_INDEX=0
+
+cycle_commands() {
+  # Insert the current command into the input line buffer
+  READLINE_LINE="${CYCLE_COMMANDS[$CYCLE_INDEX]}"
+ 
+  # Move the cursor to the end of the line
+  READLINE_POINT=${#READLINE_LINE}
+
+  # Advance to the next index, wrapping around
+  CYCLE_INDEX=$(( (CYCLE_INDEX + 1) % ${#CYCLE_COMMANDS[@]} ))
+}
+
+# Bind cycle_commands to Ctrl+X using readline's -x option
+bind -x '"\C-x": cycle_commands'
+bind -x '"\C-v": cycle_commands'
+
+
 
 # Default initialization
 bashprompt simple
