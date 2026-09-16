@@ -1,3 +1,20 @@
+
+usage() {
+    echo -e "Usage: bashprompt [theme]\n"
+    echo "Available themes:"
+    echo "  detail    - Multi-line, detailed Git status (shows lists of staged, changed, untracked)"
+    echo "  git       - Multi-line, standard Git status (shows lists of changed, untracked)"
+    echo "  gitsimple - Single-line, compact Git divergence and status icons"
+    echo "  raw       - Multi-line, includes raw 'git status --porcelain=v2' output"
+    echo "  full      - Single-line, standard colored user@host:working_dir"
+    echo "  compact   - Single-line, minimal colored working_dir"
+    echo "  simple    - Single-line, default uncolored basic prompt (\$)"
+    echo ""
+    echo "Hotkeys:"
+    echo "  Ctrl+N    - Cycle through themes directly in the terminal (detail -> git -> simple -> raw)"
+}
+
+
 __parse_git_status() {
     # Verify inside git directory
     local git_dir
@@ -18,7 +35,7 @@ __parse_git_status() {
     local REDARROWDOWN="$RED$ARROWDOWN"
     local CHECK="✓"
     local EX="✗"
-    local TBONE="├───" BBTBONE="$BBLACK├───" DOWNHOOK="┌───" BBDOWNHOOK="$BBBLACK┌───" UPHOOK="└──╼" BBUPHOOK="$BBLACK└──╼"
+    local TBONE="├───" BBTBONE="$BBLACK├───" DOWNHOOK="┌───" BBDOWNHOOK="$BBLACK┌───" UPHOOK="└──╼" BBUPHOOK="$BBLACK└──╼"
 
     # Fast single-pass status check
     while IFS= read -r line; do
@@ -40,7 +57,7 @@ __parse_git_status() {
 
     while IFS= read -r line; do
         ((${#staged_files[@]} < fileshowcount)) && staged_files+=("${line##* }")
-    done < <(git diff --name-only HEAD 2>/dev/null)
+    done < <(git diff --cached --name-only 2>/dev/null)
 
     # Detached HEAD check
     [[ "$branch" == "(detached)" ]] && branch="Detached HEAD"
@@ -60,9 +77,7 @@ __parse_git_status() {
     (( ahead > 0 || behind > 0 )) && branch_col="$RED"
 
     GIT_PROMPT_INFO="${branch_col}(${branch}${state}"
-    E0=""
-    E1=""
-    E2=""
+    local E0="" E1="" E2=""
     (( ahead > 0 )) && GIT_PROMPT_INFO+=" ↑${ahead}"
     (( behind > 0 )) && GIT_PROMPT_INFO+=" ↓${behind}"
     GIT_PROMPT_INFO+=")$RESET"
@@ -202,6 +217,9 @@ bashprompt() {
             PROMPT_COMMAND=""
             PS1="\[\e[32m\]\u@\h\[\e[0m\]:\[\e[34m\]\w\[\e[0m\]\$ "
             ;;
+        help)
+            usage
+            ;;
         simple|minimal|*)
             PROMPT_COMMAND=""
             PS1="\$ "
@@ -232,8 +250,7 @@ cycle_commands() {
 }
 
 # Bind cycle_commands to Ctrl+X using readline's -x option
-bind -x '"\C-x": cycle_commands'
-bind -x '"\C-v": cycle_commands'
+bind -x '"\C-n": cycle_commands'
 
 
 
