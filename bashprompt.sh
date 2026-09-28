@@ -10,6 +10,9 @@ usage() {
     echo "  compact   - Single-line, minimal colored working_dir"
     echo "  simple    - Single-line, default uncolored basic prompt (\$)"
     echo ""
+    echo "Initialize:"
+    echo ". ~/bashprompt/bashprompt.sh;bashprompt detail"
+    echo ""
     echo "Hotkeys:"
     echo "  Ctrl+N    - Cycle through themes directly in the terminal (detail -> git -> simple -> raw)"
 }
